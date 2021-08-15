@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone'
+import Plot from 'react-plotly.js';
 import script from './python/script.py';
 import './App.css';
 
@@ -73,7 +74,22 @@ function App() {
           </p>
           <button onClick={() => setClicked(!isClicked)}>{''+isClicked}</button>
         </div>
-        <MyDropzone/>
+        <MyDropzone />
+        <div>
+          <Plot
+            data={[
+              {
+                x: [1, 2, 3],
+                y: [2, 6, 3],
+                type: 'scatter',
+                mode: 'lines+markers',
+                marker: {color: 'red'},
+              },
+              {type: 'bar', x: [1, 2, 3], y: [2, 5, 3]},
+            ]}
+            layout={ {width: 320, height: 240, title: 'A Fancy Plot'} }
+          />
+        </div>
       </header>
     </div>
   );
