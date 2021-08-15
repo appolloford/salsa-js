@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import {useDropzone} from 'react-dropzone'
+import { useDropzone } from 'react-dropzone'
 import script from './python/script.py';
 import './App.css';
 
@@ -12,16 +12,22 @@ function MyDropzone() {
       reader.onerror = () => console.log('file reading has failed')
       reader.onload = () => {
         // Do whatever you want with the file contents
-        // const binaryStr = reader.result
-        // console.log(binaryStr)
+        const binaryStr = reader.result
+        console.log(binaryStr)
+        window.jsarray = new Float32Array(reader.result);
         window.pyodide.loadPackage(['astropy']).then(() => {
-          const output = window.pyodide.runPython(`
-            # import numpy as np
-            # from astropy.io import fits
-            # fits.open(${reader.readAsArrayBuffer(file)})
-            print(1+2)
+          const ret = window.pyodide.runPython(`
+            from io import BytesIO
+            from js import jsarray
+            from astropy.io import fits
+            array = jsarray.to_py().tobytes()
+            print(type(array))
+            print(array)
+            raw = fits.open(BytesIO(array), mode="readonly")
+            data = raw[0].data
+            data.tolist()
           `)
-          console.log(output)
+          console.log("return value", ret.toJs())
         })
       }
       reader.readAsArrayBuffer(file)
