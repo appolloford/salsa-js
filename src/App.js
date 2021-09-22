@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone'
 import Plot from 'react-plotly.js';
 import './App.css';
+import fitsreader from './python/fitsreader.py';
 
 function App() {
 
@@ -51,55 +52,25 @@ function App() {
         // Do whatever you want with the file contents
         window.jsarray = new Float32Array(reader.result);
         window.pyodide.loadPackage(['astropy']).then(() => {
-          const ydata = window.pyodide.runPython(`
-              from io import BytesIO
-              from js import jsarray
-              from astropy.io import fits
-              array = jsarray.to_py().tobytes()
-              # print(type(array))
-              # print(array)
-              raw = fits.open(BytesIO(array), mode="readonly")
-              data = raw[0].data
-              data.tolist()
-            `)
-          // console.log("return value", ydata.toJs())
-          // console.log("return value", ydata.toJs()[0])
-          // console.log("return value", ydata.toJs()[0][0])
-          const xdata = window.pyodide.runPython(`
-              from io import BytesIO
-              from js import jsarray
-              from astropy.io import fits
-              array = jsarray.to_py().tobytes()
-              raw = fits.open(BytesIO(array), mode="readonly")
-              header = raw[0].header
-              naxis = header["NAXIS1"]
-              reval = header["CRVAL1"]
-              repix = header["CRPIX1"]
-              delta = header["CDELT1"]
-              xdata = [reval + (i-repix) * delta for i in range(naxis)]
-              xdata
-            `)
-          // console.log("xdata", xdata.toJs())
-          const header = window.pyodide.runPython(`
-            from io import BytesIO
-            from js import jsarray
-            from astropy.io import fits
-            array = jsarray.to_py().tobytes()
-            raw = fits.open(BytesIO(array), mode="readonly")
-            header = raw[0].header
-            print(header.items())
-            # header.items()
-            dict(header)
-          `)
-          console.log("header", header.toJs())
-          console.log("CRPIX1", header.get("CRPIX1"))
+          const getData = async () => {
+            const scriptText = await (await fetch(fitsreader)).text();
+            // console.log("script text", scriptText)
+            window.pyodide.runPython(scriptText);
+            let content = window.pyodide.globals.get("fitsreader");
+            // console.log("content", content)
+            // console.log("header", content.header.toJs())
+            const xdata = content.axisdata(1).toJs()
+            const ydata = content.rawdata.toJs()[0][0]
+  
+            setPlotData([{
+              x: xdata,
+              y: ydata,
+              type: 'scatter',
+              mode: 'lines+markers',
+            }])
+          }
 
-          setPlotData([{
-            x: xdata.toJs(),
-            y: ydata.toJs()[0][0],
-            type: 'scatter',
-            mode: 'lines+markers',
-          }])
+          getData();
         })
       }
       reader.readAsArrayBuffer(file)
